@@ -22,6 +22,9 @@ df = pd.read_excel('../MovimentaçãoMercantis_ORIGINAL.xlsx')
 df['CNPJ_ES'] = df['CNPJ_ES'].astype(str)
 df['CPF_CNPJ'] = df['CPF_CNPJ'].apply(lambda x: str(x) if pd.notnull(x) else x)
 
+# Método para aplicar função no DataFrame inteiro (apllymap)
+#df = df.applymap(lambda x: str(x) if pd.notnull(x) else x)
+
 
 desconto_devolucao = df[df['DESC_MERC_DEV'].apply(lambda x: float(x) != 0.0)] #Filtrando linhas
 df = df[df['DESC_MERC_DEV'].apply(lambda x: float(x) == 0.0)] #Excluindo linhas filtradas
@@ -33,6 +36,9 @@ excluido_devolucao = df[df['DS_CC'].apply(lambda x: 'DEVOLUÇ' in x)] #Filtrando
 df = df[df['DS_CC'].apply(lambda x: not('DEVOLUÇ' in x))] #Excluindo linhas filtradas
 if (create):
     excluido_devolucao.to_excel('LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+
+df_pagto = df[df['SAIDA'].apply(lambda x: x != 0 )] # Separando a tabela de PAGTO e RECEBTO
+df_recebto = df[df['ENTRADA'].apply(lambda x: x != 0 )] # Separando a tabela de PAGTO e RECEBTO
 
 
 # Removendo todos os espaços em branco de uma coluna
@@ -50,9 +56,10 @@ if (create):
 #Removendo colunas pelo nome
 df.drop(columns=['VALOR_PRINCIPAL', 'VALOR_REC_PAGO'], inplace=True)
 
-print(df)
+print(df_pagto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
+print(df_recebto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
 
-df.to_excel('Movimentação_Mercantis_08.xlsx', index=False)
+#df.to_excel('Movimentação_Mercantis_08.xlsx', index=False)
 
 """
 print(df.columns)
