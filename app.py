@@ -28,25 +28,26 @@ for column in df.columns:
         df.drop(columns=[column], inplace=True)
 '''
 
-print("DataFrame Completo")
+print("DataFrame Original")
 print(df)
 print('--------------------------------------------------------------------------------------------------')
 
 
-desconto_devolucao = df[df['DESC_MERC_DEV'].apply(lambda x: float(x) != 0.0)] #Filtrando linhas
-df_filtrado = df[df['DESC_MERC_DEV'].apply(lambda x: float(x) == 0.0)] #Excluindo linhas filtradas
-if (create):
-    desconto_devolucao.to_excel('LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
-
 #DS_CC ou DS_BANCO
 excluido_devolucao = df[df['DS_CC'].apply(lambda x: 'DEVOLUÇ' in x)] #Filtrando linhas
-df_filtrado = df[df['DS_CC'].apply(lambda x: not('DEVOLUÇ' in x))] #Excluindo linhas filtradas
 if (create):
     excluido_devolucao.to_excel('LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+df_filtrado = df[df['DS_CC'].apply(lambda x: not('DEVOLUÇ' in x))] #Excluindo linhas filtradas
 
 
-df_pagto = df[df['SAIDA'].apply(lambda x: float(x) != 0.0 )] # Separando a tabela de PAGTO e RECEBTO
-df_recebto = df[df['ENTRADA'].apply(lambda x: float(x) != 0.0 )] # Separando a tabela de PAGTO e RECEBTO
+desconto_devolucao = df[df['DESC_MERC_DEV'].apply(lambda x: float(x) != 0.0)] #Filtrando linhas com VlrDesconto
+if (create):
+    desconto_devolucao.to_excel('LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+df_filtrado.loc[df_filtrado['DESC_MERC_DEV'] != 0.0, 'DESC_MERC_DEV'] = 0.0 #Zerando valores filtrados com Desconto
+
+
+df_pagto = df_filtrado[df_filtrado['SAIDA'].apply(lambda x: float(x) != 0.0 )] # Separando a tabela de PAGTO e RECEBTO
+df_recebto = df_filtrado[df_filtrado['ENTRADA'].apply(lambda x: float(x) != 0.0 )] # Separando a tabela de PAGTO e RECEBTO
 
 
 # print(df_pagto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
