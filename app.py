@@ -28,30 +28,60 @@ for column in df.columns:
         df.drop(columns=[column], inplace=True)
 '''
 
+
+
 print("DataFrame Original")
 print(df)
 print('--------------------------------------------------------------------------------------------------')
 
 
-#DS_CC ou DS_BANCO
-excluido_devolucao = df[df['DS_CC'].apply(lambda x: 'DEVOLUÇ' in x)] #Filtrando linhas
-if (create):
-    excluido_devolucao.to_excel('LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
-df_filtrado = df[df['DS_CC'].apply(lambda x: not('DEVOLUÇ' in x))] #Excluindo linhas filtradas
+# Criando tabela de comparação para COLORIR registro com devolução mas não inclusos em "df_devolucoes_validas"
+# Filtrar apenas as linhas onde há devoluções (baseado no nome da coluna *DS_CC* ou DS_BANCO)
+df_devolucoes = df[df['DS_CC'].str.contains("DEVOLUÇ", na=False)]
+
+
+# Criar um DataFrame vazio para armazenar as linhas de devolução válidas
+df_devolucoes_validas = pd.DataFrame()
+
+# Agrupar o DataFrame por CPF_CNPJ e DATMOV para identificar valores totais de entrada e saída
+for _, group in df_devolucoes.groupby(['DATMOV', 'CPF_CNPJ']):
+    # Dividir o grupo em registros de entrada e saída
+    total_entrada = group['ENTRADA'].sum()
+    total_saida = group['SAIDA'].sum()
+    
+    # Verificar se o total de entrada bate com o total de saída
+    if total_entrada == total_saida:
+        # Adicionar todas as linhas do grupo ao DataFrame de devoluções válidas
+        df_devolucoes_validas = pd.concat([df_devolucoes_validas, group])
+df_devolucoes_validas.reset_index(drop=True, inplace=True)
+
+print(df_devolucoes_validas[['DATMOV', 'RAZAO_SOCIAL', 'SAIDA', 'ENTRADA', 'CPF_CNPJ']])
+print('--------------------------------------------------------------------------------------------------')
+
+# Realizar um merge para identificar registros em df que não estão em df_devolucoes_validas
+df_filtrado = df.merge(df_devolucoes_validas, how='left', indicator=True)
+# Manter apenas os registros que não estão no df_devolucoes_validas
+df_filtrado = df_filtrado[df_filtrado['_merge'] == 'left_only'].drop(columns='_merge')
+df_filtrado.reset_index(drop=True, inplace=True)
 
 
 desconto_devolucao = df[df['DESC_MERC_DEV'].apply(lambda x: float(x) != 0.0)] #Filtrando linhas com VlrDesconto
-if (create):
-    desconto_devolucao.to_excel('LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
 df_filtrado.loc[df_filtrado['DESC_MERC_DEV'] != 0.0, 'DESC_MERC_DEV'] = 0.0 #Zerando valores filtrados com Desconto
+if (create):
+    df_devolucoes_validas.to_excel('LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+    desconto_devolucao.to_excel('LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+    df_filtrado.to_excel('Movimentação_Mercantis_08.xlsx', index=False)
+
 
 
 df_pagto = df_filtrado[df_filtrado['SAIDA'].apply(lambda x: float(x) != 0.0 )] # Separando a tabela de PAGTO e RECEBTO
 df_recebto = df_filtrado[df_filtrado['ENTRADA'].apply(lambda x: float(x) != 0.0 )] # Separando a tabela de PAGTO e RECEBTO
 
 
+
 # print(df_pagto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
 # print(df_recebto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
+
 print("DataFrame Filtrado")
 print(df_filtrado)
 print('--------------------------------------------------------------------------------------------------')
@@ -59,7 +89,7 @@ print("DataFrame Desconto por Devolução")
 print(desconto_devolucao)
 print('--------------------------------------------------------------------------------------------------')
 print("DataFrame Excluidos por Devolução")
-print(excluido_devolucao)
+print(df_devolucoes)
 print('--------------------------------------------------------------------------------------------------')
 print("DataFrame Pagamentos")
 print(df_pagto)
@@ -69,7 +99,6 @@ print(df_recebto)
 print('--------------------------------------------------------------------------------------------------')
 
 
-#df.to_excel('Movimentação_Mercantis_08.xlsx', index=False)
 
 
 # Removendo todos os espaços em branco de uma coluna
