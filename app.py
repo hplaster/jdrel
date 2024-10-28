@@ -55,8 +55,6 @@ for _, group in df_devolucoes.groupby(['DATMOV', 'CPF_CNPJ']):
         df_devolucoes_validas = pd.concat([df_devolucoes_validas, group])
 df_devolucoes_validas.reset_index(drop=True, inplace=True)
 
-print(df_devolucoes_validas[['DATMOV', 'RAZAO_SOCIAL', 'SAIDA', 'ENTRADA', 'CPF_CNPJ']])
-print('--------------------------------------------------------------------------------------------------')
 
 # Realizar um merge para identificar registros em df que não estão em df_devolucoes_validas
 df_filtrado = df.merge(df_devolucoes_validas, how='left', indicator=True)
@@ -67,6 +65,8 @@ df_filtrado.reset_index(drop=True, inplace=True)
 
 desconto_devolucao = df[df['DESC_MERC_DEV'].apply(lambda x: float(x) != 0.0)] #Filtrando linhas com VlrDesconto
 df_filtrado.loc[df_filtrado['DESC_MERC_DEV'] != 0.0, 'DESC_MERC_DEV'] = 0.0 #Zerando valores filtrados com Desconto
+
+
 if (create):
     df_devolucoes_validas.to_excel('LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
     desconto_devolucao.to_excel('LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
@@ -74,8 +74,20 @@ if (create):
 
 
 
-df_pagto = df_filtrado[df_filtrado['SAIDA'].apply(lambda x: float(x) != 0.0 )] # Separando a tabela de PAGTO e RECEBTO
-df_recebto = df_filtrado[df_filtrado['ENTRADA'].apply(lambda x: float(x) != 0.0 )] # Separando a tabela de PAGTO e RECEBTO
+# Separando a tabela de PAGTO e RECEBTO
+df_pagto = df_filtrado[df_filtrado['SAIDA'].apply(lambda x: float(x) != 0.0 )] 
+df_recebto = df_filtrado[df_filtrado['ENTRADA'].apply(lambda x: float(x) != 0.0 )]
+
+
+
+
+
+
+
+# Filtrando valores nulos de pagamento
+df_pagto_nulos = df_filtrado[df_filtrado['SAIDA'].isnull()]
+# Filtrando valores nulos de recebimento
+df_recebto_nulos = df_filtrado[df_filtrado['ENTRADA'].isnull()]
 
 
 
@@ -88,6 +100,9 @@ print('-------------------------------------------------------------------------
 print("DataFrame Desconto por Devolução")
 print(desconto_devolucao)
 print('--------------------------------------------------------------------------------------------------')
+print("DataFrame Devoluções Válidas")
+print(df_devolucoes_validas[['DATMOV', 'RAZAO_SOCIAL', 'SAIDA', 'ENTRADA', 'CPF_CNPJ']])
+print('--------------------------------------------------------------------------------------------------')
 print("DataFrame Excluidos por Devolução")
 print(df_devolucoes)
 print('--------------------------------------------------------------------------------------------------')
@@ -97,6 +112,10 @@ print('-------------------------------------------------------------------------
 print("DataFrame Recebimentos")
 print(df_recebto)
 print('--------------------------------------------------------------------------------------------------')
+print("DataFrame Nulos")
+print(df_pagto_nulos)
+print('--------------------------------------------------------------------------------------------------')
+print(df_recebto_nulos)
 
 
 
