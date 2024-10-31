@@ -1,13 +1,43 @@
 import pandas as pd
+import json
 
 # Condicional para criar as planilhas
 create = False
 
+# Função para carregar o conteúdo de um arquivo JSON
+def carregar_json(nome_arquivo):
+    with open(nome_arquivo, 'r', encoding='utf-8') as arquivo:
+        return json.load(arquivo)
+
+
 # Função para aplicar regras de formatação específicas a cada linha do DataFrame
 def formatar_linha(row):
-    # REGRAS:
+    # Carregar cada lista de um arquivo JSON separado
+    de_paraHistorico = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-historico_modificado.json')
+    de_paraRazaoSocial = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-razaosocial.json')
+
+    ## REGRAS:
+    conta_debito = ''
+
+    for registro in de_paraHistorico:
+        if (registro['conteudo_comparacao'] in row['HISTORICO']):
+            conta_debito = registro['conta']
     
+
     # CONTA CONTÁBIL A DÉBITO (*)
+
+    # IR Taxas e Impostos
+    if ( 'IR' in str(row['HISTORICO']).upper and ( 'Taxas' in str(row['RAZAO_SOCIAL']) or 'Impostos' in str(row['RAZAO_SOCIAL']) ) ):
+        conta_debito = '178'
+
+    # Adiciona 'X' na última coluna se o registro for um cliente
+    if (row['CPF_CNPJ'] > 99999999999 and row['NRO_NFE'] >= 1):
+        conta_debito = row['CPF_CNPJ']
+        sinal = 'X'
+    else:
+        sinal = ''
+
+
 
 
     # # Exemplo de regra: adicionar 'X' na última coluna se 'Flag' for verdadeiro
@@ -45,11 +75,11 @@ def formatar_linha(row):
     linha_txt = (
         f"|6100|"
         f"{row['DATMOV']}|"
-        f"{row['CNPJ']}|"
+        f"{conta_debito}|"
         f"{row['Data']:02}/{row['Mes']:02}/{row['Ano']}|"  # Exemplo para data
         f"{row['Valor']:.2f}|"
         f"{row['Descricao']}|"
-        f"{'X' if row['Flag'] else ''}|||"
+        f"{sinal}|||"
     )
     return linha_txt
 
@@ -92,7 +122,7 @@ for column in df.columns:
 
 
 print("DataFrame Original")
-print(df)
+print(df.columns)
 print('--------------------------------------------------------------------------------------------------')
 
 
@@ -136,11 +166,11 @@ df_recebto = df_filtrado[df_filtrado['ENTRADA'].apply(lambda x: float(x) != 0.0 
 
 
 if (create):
-    df_devolucoes_validas.to_excel('LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
-    desconto_devolucao.to_excel('LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
-    df_filtrado.to_excel('Movimentação_Mercantis_08.xlsx', index=False)
-    df_pagto.to_excel('Movimentação_Mercantis_PAGTO_08.xlsx', index=False)
-    df_recebto.to_excel('Movimentação_Mercantis_RECEBTO_08.xlsx', index=False)
+    df_devolucoes_validas.to_excel('../planilhas_geradas/LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+    desconto_devolucao.to_excel('../planilhas_geradas/LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+    df_filtrado.to_excel('../planilhas_geradas/Movimentação_Mercantis_08.xlsx', index=False)
+    df_pagto.to_excel('../planilhas_geradas/Movimentação_Mercantis_PAGTO_08.xlsx', index=False)
+    df_recebto.to_excel('../planilhas_geradas/Movimentação_Mercantis_RECEBTO_08.xlsx', index=False)
 
 
 
@@ -155,25 +185,24 @@ df_recebto_nulos = df_filtrado[df_filtrado['ENTRADA'].isnull()]
 # print(df_pagto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
 # print(df_recebto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
 
-print("DataFrame Filtrado")
-print(df_filtrado)
-print('--------------------------------------------------------------------------------------------------')
-print("DataFrame Desconto por Devolução")
-print(desconto_devolucao)
-print('--------------------------------------------------------------------------------------------------')
-print("DataFrame Devoluções Válidas")
-print(df_devolucoes_validas[['DATMOV', 'RAZAO_SOCIAL', 'SAIDA', 'ENTRADA', 'CPF_CNPJ']])
-print('--------------------------------------------------------------------------------------------------')
-print("DataFrame Excluidos por Devolução")
-print(df_devolucoes)
-print('--------------------------------------------------------------------------------------------------')
-print("DataFrame Pagamentos")
-print(df_pagto)
-print('--------------------------------------------------------------------------------------------------')
-print("DataFrame Recebimentos")
-print(df_recebto)
-print('--------------------------------------------------------------------------------------------------')
-
+# print("DataFrame Filtrado")
+# print(df_filtrado)
+# print('--------------------------------------------------------------------------------------------------')
+# print("DataFrame Desconto por Devolução")
+# print(desconto_devolucao)
+# print('--------------------------------------------------------------------------------------------------')
+# print("DataFrame Devoluções Válidas")
+# print(df_devolucoes_validas[['DATMOV', 'RAZAO_SOCIAL', 'SAIDA', 'ENTRADA', 'CPF_CNPJ']])
+# print('--------------------------------------------------------------------------------------------------')
+# print("DataFrame Excluidos por Devolução")
+# print(df_devolucoes)
+# print('--------------------------------------------------------------------------------------------------')
+# print("DataFrame Pagamentos")
+# print(df_pagto)
+# print('--------------------------------------------------------------------------------------------------')
+# print("DataFrame Recebimentos")
+# print(df_recebto)
+# print('--------------------------------------------------------------------------------------------------')
 
 # Removendo todos os espaços em branco de uma coluna
 #df['Date'] = df['Date'].str.replace('\s+', '|', regex=True)
@@ -182,17 +211,19 @@ print('-------------------------------------------------------------------------
 
 
 
-# Criar lista de linhas formatadas para o TXT
-linhas_txt = [formatar_linha(row) for _, row in df_pagto.iterrows()]
 
-# Adicionar cabeçalhos ou rodapés, se necessário
-cabecalho = "|0000|00085822000112|"
-codigo = "|6000|V||||"
 
-# Juntar todas as linhas em uma estrutura de TXT
-conteudo_txt = "\n".join([cabecalho] + [codigo] + linhas_txt)
+# # Criar lista de linhas formatadas para o TXT
+# linhas_txt = [formatar_linha(row) for _, row in df_pagto.iterrows()]
 
-# Salvar o conteúdo em um arquivo TXT
-with open('saida_formatada.txt', 'w') as arquivo_txt:
-    arquivo_txt.write(conteudo_txt)
+# # Adicionar cabeçalhos ou rodapés, se necessário
+# cabecalho = "|0000|00085822000112|"
+# codigo = "|6000|V||||"
+
+# # Juntar todas as linhas em uma estrutura de TXT
+# conteudo_txt = "\n".join([cabecalho] + [codigo] + linhas_txt)
+
+# # Salvar o conteúdo em um arquivo TXT
+# with open('saida_formatada.txt', 'w') as arquivo_txt:
+#     arquivo_txt.write(conteudo_txt)
 
