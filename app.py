@@ -12,24 +12,25 @@ def carregar_json(nome_arquivo):
 
 # Função para aplicar regras de formatação específicas a cada linha do DataFrame
 def formatar_linha(row):
-    # Carregar cada lista de um arquivo JSON separado
+    ### REGRAS:
+
+    ## CONTA CONTÁBIL A DÉBITO (*)
+    conta_debito = ''
+    # Carregar cada JSON separado
     de_paraHistorico = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-historico_modificado.json')
     de_paraRazaoSocial = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-razaosocial.json')
 
-    ## REGRAS:
-    conta_debito = ''
-
+    # DE/PARA - HISTÓRICO
     for registro in de_paraHistorico:
         if (registro['conteudo_comparacao'] in row['HISTORICO']):
             conta_debito = registro['conta']
-    
-
-    # CONTA CONTÁBIL A DÉBITO (*)
-
+    # DE/PARA - RAZÃO SOCIAL
+    for registro in de_paraRazaoSocial:
+        if (registro['conteudo_comparacao'] in row['RAZAO_SOCIAL']):
+            conta_debito = registro['conta']
     # IR Taxas e Impostos
     if ( 'IR' in str(row['HISTORICO']).upper and ( 'Taxas' in str(row['RAZAO_SOCIAL']) or 'Impostos' in str(row['RAZAO_SOCIAL']) ) ):
         conta_debito = '178'
-
     # Adiciona 'X' na última coluna se o registro for um cliente
     if (row['CPF_CNPJ'] > 99999999999 and row['NRO_NFE'] >= 1):
         conta_debito = row['CPF_CNPJ']
@@ -38,29 +39,24 @@ def formatar_linha(row):
         sinal = ''
 
 
+    ## CONTA CONTÁBIL A CRÉDITO (*)
+    conta_credito = ''
+    # Carregar cada JSON separado
+    de_paraDS_banco = carregar_json('./CONTA_CONTÁBIL_A_CRÉDITO/de_para_bancos-ds_banco_modificado.json')
+    de_paraDS_cc = carregar_json('./CONTA_CONTÁBIL_A_CRÉDITO/de_para_bancos-ds_cc.json')
+
+    # DE/PARA - DS_BANCO
+    for registro in de_paraDS_banco:
+        if (registro['conteudo_comparacao'] in row['DS_BANCO']):
+            conta_debito = registro['conta']
+    # DE/PARA - DS_CC
+    for registro in de_paraDS_cc:
+        if (registro['conteudo_comparacao'] in row['DS_CC']):
+            conta_debito = registro['conta']
 
 
-    # # Exemplo de regra: adicionar 'X' na última coluna se 'Flag' for verdadeiro
-    # if row['Flag']:
-    #     flag_column = 'X'
-    # else:
-    #     flag_column = ''
 
-    # # Exemplo de regra: ajustar o valor formatado dependendo do valor na coluna 'Conta'
-    # if row['Conta'] == 2260:
-    #     descricao = "DESPESAS BANCARIAS"
-    # elif row['Conta'] == 2253:
-    #     descricao = "TARIFA"
-    # else:
-    #     descricao = row['Descricao']  # Usa o valor original se não atender a uma regra específica
-
-    # # Exemplo de regra: formatar valor com sinal negativo se coluna 'Tipo_Registro' for um valor específico
-    # if row['Tipo_Registro'] == 6100:
-    #     valor_formatado = f"-{row['Valor']:.2f}"  # Coloca o valor como negativo
-    # else:
-    #     valor_formatado = f"{row['Valor']:.2f}"
-
-    # # Construção da linha do TXT
+    # # Exemplo de formatação    
     # linha_txt = (
     #     f"|{row['Tipo_Registro']}|"
     #     f"{str(row['CNPJ']).zfill(14)}|"
@@ -71,14 +67,14 @@ def formatar_linha(row):
     #     f"{flag_column}|||"
     # )
 
-    # Exemplo de formatação
+    # Construção da linha do TXT
     linha_txt = (
         f"|6100|"
         f"{row['DATMOV']}|"
         f"{conta_debito}|"
-        f"{row['Data']:02}/{row['Mes']:02}/{row['Ano']}|"  # Exemplo para data
-        f"{row['Valor']:.2f}|"
-        f"{row['Descricao']}|"
+        f"{conta_credito}|"
+        f"{row['SAIDA']}|"
+        f"VR PG {row['NRO_NFE']} {row['RAZAO_SOCIAL']} {row['HISTORICO']}|"
         f"{sinal}|||"
     )
     return linha_txt
@@ -213,17 +209,17 @@ df_recebto_nulos = df_filtrado[df_filtrado['ENTRADA'].isnull()]
 
 
 
-# # Criar lista de linhas formatadas para o TXT
-# linhas_txt = [formatar_linha(row) for _, row in df_pagto.iterrows()]
+# Criar lista de linhas formatadas para o TXT
+linhas_txt = [formatar_linha(row) for _, row in df_pagto.iterrows()]
 
-# # Adicionar cabeçalhos ou rodapés, se necessário
-# cabecalho = "|0000|00085822000112|"
-# codigo = "|6000|V||||"
+# Adicionar cabeçalhos ou rodapés, se necessário
+cabecalho = "|0000|00085822000112|"
+codigo = "|6000|V||||"
 
-# # Juntar todas as linhas em uma estrutura de TXT
-# conteudo_txt = "\n".join([cabecalho] + [codigo] + linhas_txt)
+# Juntar todas as linhas em uma estrutura de TXT
+conteudo_txt = "\n".join([cabecalho] + [codigo] + linhas_txt)
 
-# # Salvar o conteúdo em um arquivo TXT
-# with open('saida_formatada.txt', 'w') as arquivo_txt:
-#     arquivo_txt.write(conteudo_txt)
+# Salvar o conteúdo em um arquivo TXT
+with open('saida_formatada.txt', 'w') as arquivo_txt:
+    arquivo_txt.write(conteudo_txt)
 
