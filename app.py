@@ -1,5 +1,6 @@
 import pandas as pd
 import json
+import re
 
 # Condicional para criar as planilhas
 create = False
@@ -9,63 +10,73 @@ def carregar_json(nome_arquivo):
     with open(nome_arquivo, 'r', encoding='utf-8') as arquivo:
         return json.load(arquivo)
 
+# Função para limpar o CNPJ e garantir que tenha 14 dígitos com zeros à esquerda
+def limpar_cnpj(cnpj):
+    cnpj = int(cnpj)
+    cnpj_limpo = re.sub(r'\D', '', str(cnpj))  # Remove qualquer caractere que não seja dígito
+    return cnpj_limpo.zfill(14)  # Garante que o CNPJ tenha 14 dígitos, preenchendo com zeros à esquerda se necessário
+
 
 # Função para aplicar regras de formatação específicas a cada linha do DataFrame
 def formatar_linha(row):
     ### REGRAS:
-
+    
     ## CONTA CONTÁBIL A DÉBITO (*)
     conta_debito = ''
-    # Carregar cada JSON separado
+    sinal = ''
+    # Carregar JSONs de configuração
     de_paraHistorico = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-historico_modificado.json')
-    de_paraRazaoSocial = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-razaosocial.json')
+    de_paraRazaoSocial = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-razaosocial_modificado.json')
 
+
+    # Certifique-se de que o valor em HISTORICO e RAZAO_SOCIAL não seja None
+    historico = str(row['HISTORICO']).upper() if row['HISTORICO'] else ""
+    razao_social = str(row['RAZAO_SOCIAL']).upper() if row['RAZAO_SOCIAL'] else ""
+    
     # DE/PARA - HISTÓRICO
     for registro in de_paraHistorico:
-        if (registro['conteudo_comparacao'] in row['HISTORICO']):
+        if registro['conteudo_comparacao'].upper() in historico:
             conta_debito = registro['conta']
+            break  # Parar ao encontrar o primeiro match
+
     # DE/PARA - RAZÃO SOCIAL
     for registro in de_paraRazaoSocial:
-        if (registro['conteudo_comparacao'] in row['RAZAO_SOCIAL']):
+        if registro['conteudo_comparacao'].upper() in razao_social:
             conta_debito = registro['conta']
+            break # Parar ao encontrar o primeiro match
+
     # IR Taxas e Impostos
-    if ( 'IR' in str(row['HISTORICO']).upper and ( 'Taxas' in str(row['RAZAO_SOCIAL']) or 'Impostos' in str(row['RAZAO_SOCIAL']) ) ):
+    if 'IR' in historico and ('TAXAS' in razao_social or 'IMPOSTOS' in razao_social):
         conta_debito = '178'
+
     # Adiciona 'X' na última coluna se o registro for um cliente
-    if (row['CPF_CNPJ'] > 99999999999 and row['NRO_NFE'] >= 1):
-        conta_debito = row['CPF_CNPJ']
-        sinal = 'X'
-    else:
-        sinal = ''
+    try:
+        if int(row['CPF_CNPJ']) > 99999999999 and int(row['NRO_NFE']) >= 1:
+            conta_debito = limpar_cnpj(row['CPF_CNPJ'])
+            sinal = 'X'
+    except (ValueError, TypeError):
+        pass  # Ignora erros caso CPF_CNPJ ou NRO_NFE não sejam numéricos
+
 
 
     ## CONTA CONTÁBIL A CRÉDITO (*)
     conta_credito = ''
-    # Carregar cada JSON separado
+    # Carregar JSONs de configuração
     de_paraDS_banco = carregar_json('./CONTA_CONTÁBIL_A_CRÉDITO/de_para_bancos-ds_banco_modificado.json')
     de_paraDS_cc = carregar_json('./CONTA_CONTÁBIL_A_CRÉDITO/de_para_bancos-ds_cc.json')
 
     # DE/PARA - DS_BANCO
     for registro in de_paraDS_banco:
-        if (registro['conteudo_comparacao'] in row['DS_BANCO']):
-            conta_debito = registro['conta']
+        if registro['conteudo_comparacao'].upper() in str(row['DS_BANCO']).upper():
+            conta_credito = registro['conta']
+            break # Parar ao encontrar o primeiro match
+
     # DE/PARA - DS_CC
     for registro in de_paraDS_cc:
-        if (registro['conteudo_comparacao'] in row['DS_CC']):
-            conta_debito = registro['conta']
+        if registro['conteudo_comparacao'].upper() in str(row['DS_CC']).upper():
+            conta_credito = registro['conta']
+            break # Parar ao encontrar o primeiro match
 
-
-
-    # # Exemplo de formatação    
-    # linha_txt = (
-    #     f"|{row['Tipo_Registro']}|"
-    #     f"{str(row['CNPJ']).zfill(14)}|"
-    #     f"{str(row['Conta']).zfill(4)}|"
-    #     f"{row['Data']}|"
-    #     f"{valor_formatado}|"
-    #     f"{descricao}|"
-    #     f"{flag_column}|||"
-    # )
 
     # Construção da linha do TXT
     linha_txt = (
@@ -74,15 +85,10 @@ def formatar_linha(row):
         f"{conta_debito}|"
         f"{conta_credito}|"
         f"{row['SAIDA']}|"
-        f"VR PG {row['NRO_NFE']} {row['RAZAO_SOCIAL']} {row['HISTORICO']}|"
+        f"VR PG {row['NRO_NFE']} {razao_social} {historico}|"  # Descrição Histórico
         f"{sinal}|||"
     )
     return linha_txt
-
-
-
-
-
 
 
 
@@ -101,7 +107,7 @@ df['DATMOV'] = df['DATMOV'].dt.strftime('%d/%m/%Y')
 
 
 df['CNPJ_ES'] = df['CNPJ_ES'].astype(str)
-df['CPF_CNPJ'] = df['CPF_CNPJ'].apply(lambda x: str(x) if pd.notnull(x) else x)
+#df['CPF_CNPJ'] = df['CPF_CNPJ'].apply(lambda x: str(x) if pd.notnull(x) else x)
 # df = df.applymap(lambda x: str(x) if pd.notnull(x) else x) # Método para aplicar função no DataFrame inteiro (apllymap)
 
 
@@ -220,6 +226,6 @@ codigo = "|6000|V||||"
 conteudo_txt = "\n".join([cabecalho] + [codigo] + linhas_txt)
 
 # Salvar o conteúdo em um arquivo TXT
-with open('saida_formatada.txt', 'w') as arquivo_txt:
+with open('saida_formatada.txt', 'w', encoding='utf-8') as arquivo_txt:
     arquivo_txt.write(conteudo_txt)
 
