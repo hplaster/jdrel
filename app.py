@@ -20,7 +20,7 @@ def limpar_cnpj(cnpj):
 # Função para aplicar regras de formatação específicas a cada linha do DataFrame
 def formatar_linha(row):
     ### REGRAS:
-    
+
     ## CONTA CONTÁBIL A DÉBITO (*)
     conta_debito = ''
     sinal = ''
@@ -32,22 +32,6 @@ def formatar_linha(row):
     # Certifique-se de que o valor em HISTORICO e RAZAO_SOCIAL não seja None
     historico = str(row['HISTORICO']).upper() if row['HISTORICO'] else ""
     razao_social = str(row['RAZAO_SOCIAL']).upper() if row['RAZAO_SOCIAL'] else ""
-    
-    # DE/PARA - HISTÓRICO
-    for registro in de_paraHistorico:
-        if registro['conteudo_comparacao'].upper() in historico:
-            conta_debito = registro['conta']
-            break  # Parar ao encontrar o primeiro match
-
-    # DE/PARA - RAZÃO SOCIAL
-    for registro in de_paraRazaoSocial:
-        if registro['conteudo_comparacao'].upper() in razao_social:
-            conta_debito = registro['conta']
-            break # Parar ao encontrar o primeiro match
-
-    # IR Taxas e Impostos
-    if 'IR' in historico and ('TAXAS' in razao_social or 'IMPOSTOS' in razao_social):
-        conta_debito = '178'
 
     # Adiciona 'X' na última coluna se o registro for um cliente
     try:
@@ -56,6 +40,34 @@ def formatar_linha(row):
             sinal = 'X'
     except (ValueError, TypeError):
         pass  # Ignora erros caso CPF_CNPJ ou NRO_NFE não sejam numéricos
+
+
+    # DE/PARA - RAZÃO SOCIAL
+    for registro in de_paraRazaoSocial:
+        if registro['modo_comparacao'] == 'Contém':
+            if registro['conteudo_comparacao'].upper() in razao_social:
+                conta_debito = registro['conta']
+                break # Parar ao encontrar o primeiro match
+        if registro['modo_comparacao'] == 'Igual':
+            if registro['conteudo_comparacao'].upper() == razao_social:
+                conta_debito = registro['conta']
+                break # Parar ao encontrar o primeiro match
+
+
+    # DE/PARA - HISTÓRICO
+    for registro in de_paraHistorico:
+        if registro['modo_comparacao'] == 'Contém':
+            if registro['conteudo_comparacao'].upper() in historico:
+                conta_debito = registro['conta']
+                break  # Parar ao encontrar o primeiro match
+        if registro['modo_comparacao'] == 'Igual':
+            if registro['conteudo_comparacao'].upper() == historico:
+                conta_debito = registro['conta']
+                break  # Parar ao encontrar o primeiro match
+
+    # # IR Taxas e Impostos
+    # if 'IR' in historico and ('TAXAS' in razao_social or 'IMPOSTOS' in razao_social):
+    #     conta_debito = '178'
 
 
 
@@ -67,9 +79,14 @@ def formatar_linha(row):
 
     # DE/PARA - DS_BANCO
     for registro in de_paraDS_banco:
-        if registro['conteudo_comparacao'].upper() in str(row['DS_BANCO']).upper():
-            conta_credito = registro['conta']
-            break # Parar ao encontrar o primeiro match
+        if registro['modo_comparacao'] == 'Contém':
+            if registro['conteudo_comparacao'].upper() in str(row['DS_BANCO']).upper():
+                conta_credito = registro['conta']
+                break # Parar ao encontrar o primeiro match
+        if registro['modo_comparacao'] == 'Igual':
+            if registro['conteudo_comparacao'].upper() == str(row['DS_BANCO']).upper():
+                conta_credito = registro['conta']
+                break # Parar ao encontrar o primeiro match
 
     # DE/PARA - DS_CC
     for registro in de_paraDS_cc:
@@ -78,14 +95,17 @@ def formatar_linha(row):
             break # Parar ao encontrar o primeiro match
 
 
+    # Formata o valor com duas casas decimais e substitui '.' por ','
+    saida_formatada = f"{row['SAIDA']:.2f}".replace('.', ',')
+
     # Construção da linha do TXT
     linha_txt = (
         f"|6100|"
         f"{row['DATMOV']}|"
         f"{conta_debito}|"
         f"{conta_credito}|"
-        f"{row['SAIDA']}|"
-        f"VR PG {row['NRO_NFE']} {razao_social} {historico}|"  # Descrição Histórico
+        f"{saida_formatada}|"
+        f"VR PG{f' {str(row['NRO_NFE']).strip()}' if row['NRO_NFE'] != 'NAN' else ''}{f' {razao_social.strip()}' if razao_social != 'NAN' else ''}{f' {historico.strip()}' if historico != 'NAN' else ''}|"  # Descrição Histórico
         f"{sinal}|||"
     )
     return linha_txt
@@ -228,4 +248,3 @@ conteudo_txt = "\n".join([cabecalho] + [codigo] + linhas_txt)
 # Salvar o conteúdo em um arquivo TXT
 with open('saida_formatada.txt', 'w', encoding='utf-8') as arquivo_txt:
     arquivo_txt.write(conteudo_txt)
-
