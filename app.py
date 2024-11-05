@@ -80,11 +80,11 @@ def formatar_linha(row):
     # DE/PARA - DS_BANCO
     for registro in de_paraDS_banco:
         if registro['modo_comparacao'] == 'Contém':
-            if registro['conteudo_comparacao'].upper() in str(row['DS_BANCO']).upper():
+            if registro['conteudo_comparacao'].upper().replace('\s+', '') in str(row['DS_BANCO']).upper().replace('\s+', ''):
                 conta_credito = registro['conta']
                 break # Parar ao encontrar o primeiro match
         if registro['modo_comparacao'] == 'Igual':
-            if registro['conteudo_comparacao'].upper() == str(row['DS_BANCO']).upper():
+            if registro['conteudo_comparacao'].upper().replace('\s+', '') == str(row['DS_BANCO']).upper().replace('\s+', ''):
                 conta_credito = registro['conta']
                 break # Parar ao encontrar o primeiro match
 
