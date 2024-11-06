@@ -65,9 +65,9 @@ def formatar_linha(row):
                 conta_debito = registro['conta']
                 break  # Parar ao encontrar o primeiro match
 
-    # # IR Taxas e Impostos
-    # if 'IR' in historico and ('TAXAS' in razao_social or 'IMPOSTOS' in razao_social):
-    #     conta_debito = '178'
+    # IR Taxas e Impostos
+    if conta_debito == '':
+        conta_debito = '532'
 
 
 
@@ -80,11 +80,11 @@ def formatar_linha(row):
     # DE/PARA - DS_BANCO
     for registro in de_paraDS_banco:
         if registro['modo_comparacao'] == 'Contém':
-            if registro['conteudo_comparacao'].upper().replace('\s+', '') in str(row['DS_BANCO']).upper().replace('\s+', ''):
+            if registro['conteudo_comparacao'].upper().replace(' ', '') in str(row['DS_BANCO']).upper().replace(' ', ''):
                 conta_credito = registro['conta']
                 break # Parar ao encontrar o primeiro match
         if registro['modo_comparacao'] == 'Igual':
-            if registro['conteudo_comparacao'].upper().replace('\s+', '') == str(row['DS_BANCO']).upper().replace('\s+', ''):
+            if registro['conteudo_comparacao'].upper().replace(' ', '') == str(row['DS_BANCO']).upper().replace(' ', ''):
                 conta_credito = registro['conta']
                 break # Parar ao encontrar o primeiro match
 
