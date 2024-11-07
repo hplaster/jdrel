@@ -30,8 +30,8 @@ def formatar_linha(row):
 
 
     # Certifique-se de que o valor em HISTORICO e RAZAO_SOCIAL não seja None
-    historico = str(row['HISTORICO']).upper() if row['HISTORICO'] else ""
-    razao_social = str(row['RAZAO_SOCIAL']).upper() if row['RAZAO_SOCIAL'] else ""
+    historico = str(row['HISTORICO']) if row['HISTORICO'] else ""
+    razao_social = str(row['RAZAO_SOCIAL']) if row['RAZAO_SOCIAL'] else ""
 
     # Adiciona 'X' na última coluna se o registro for um cliente
     try:
@@ -45,11 +45,11 @@ def formatar_linha(row):
     # DE/PARA - RAZÃO SOCIAL
     for registro in de_paraRazaoSocial:
         if registro['modo_comparacao'] == 'Contém':
-            if registro['conteudo_comparacao'].upper() in razao_social:
+            if registro['conteudo_comparacao'].upper() in razao_social.upper():
                 conta_debito = registro['conta']
                 break # Parar ao encontrar o primeiro match
         if registro['modo_comparacao'] == 'Igual':
-            if registro['conteudo_comparacao'].upper() == razao_social:
+            if registro['conteudo_comparacao'].upper() == razao_social.upper():
                 conta_debito = registro['conta']
                 break # Parar ao encontrar o primeiro match
 
@@ -57,11 +57,11 @@ def formatar_linha(row):
     # DE/PARA - HISTÓRICO
     for registro in de_paraHistorico:
         if registro['modo_comparacao'] == 'Contém':
-            if registro['conteudo_comparacao'].upper() in historico:
+            if registro['conteudo_comparacao'].upper() in historico.upper():
                 conta_debito = registro['conta']
                 break  # Parar ao encontrar o primeiro match
         if registro['modo_comparacao'] == 'Igual':
-            if registro['conteudo_comparacao'].upper() == historico:
+            if registro['conteudo_comparacao'].upper() == historico.upper():
                 conta_debito = registro['conta']
                 break  # Parar ao encontrar o primeiro match
 
@@ -105,7 +105,7 @@ def formatar_linha(row):
         f"{conta_debito}|"
         f"{conta_credito}|"
         f"{saida_formatada}|"
-        f"VR PG{f' {str(row['NRO_NFE']).strip()}' if row['NRO_NFE'] != 'NAN' else ''}{f' {razao_social.strip()}' if razao_social != 'NAN' else ''}{f' {historico.strip()}' if historico != 'NAN' else ''}|"  # Descrição Histórico
+        f"VR PG{f' {re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}|"  # Descrição Histórico
         f"{sinal}|||"
     )
     return linha_txt
