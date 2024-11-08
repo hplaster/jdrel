@@ -24,13 +24,13 @@ file2_path = './saida_formatada.txt'
 
 unique_to_file1, unique_to_file2, differences = compare_files(file1_path, file2_path)
 
-# print("Linhas únicas no Arquivo 1:")
-# for line in unique_to_file1:
-#     print(line.strip())
-
-print("\nLinhas únicas no Arquivo 2:")
-for line in unique_to_file2:
+print("Linhas únicas no Arquivo 1:")
+for line in unique_to_file1:
     print(line.strip())
+
+# print("\nLinhas únicas no Arquivo 2:")
+# for line in unique_to_file2:
+#     print(line.strip())
 
 # print("\nDiferenças entre os arquivos:")
 # for line in differences:

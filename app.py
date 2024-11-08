@@ -33,37 +33,38 @@ def formatar_linha(row):
     historico = str(row['HISTORICO']) if row['HISTORICO'] else ""
     razao_social = str(row['RAZAO_SOCIAL']) if row['RAZAO_SOCIAL'] else ""
 
-    # Adiciona 'X' na última coluna se o registro for um cliente
-    try:
-        if int(row['CPF_CNPJ']) > 99999999999 and int(row['NRO_NFE']) >= 1:
-            conta_debito = limpar_cnpj(row['CPF_CNPJ'])
-            sinal = 'X'
-    except (ValueError, TypeError):
-        pass  # Ignora erros caso CPF_CNPJ ou NRO_NFE não sejam numéricos
+    if (conta_debito == ''):
+        # Adiciona 'X' na última coluna se o registro for um cliente
+        try:
+            if int(row['CPF_CNPJ']) > 99999999999 and int(row['NRO_NFE']) >= 1:
+                conta_debito = limpar_cnpj(row['CPF_CNPJ'])
+                sinal = 'X'
+        except (ValueError, TypeError):
+            pass  # Ignora erros caso CPF_CNPJ ou NRO_NFE não sejam numéricos
+    
+    if (conta_debito == ''):
+        # DE/PARA - RAZÃO SOCIAL
+        for registro in de_paraRazaoSocial:
+            if registro['modo_comparacao'] == 'Contém':
+                if registro['conteudo_comparacao'].upper() in razao_social.upper():
+                    conta_debito = registro['conta']
+                    break # Parar ao encontrar o primeiro match
+            if registro['modo_comparacao'] == 'Igual':
+                if registro['conteudo_comparacao'].upper() == razao_social.upper():
+                    conta_debito = registro['conta']
+                    break # Parar ao encontrar o primeiro match
 
-
-    # DE/PARA - RAZÃO SOCIAL
-    for registro in de_paraRazaoSocial:
-        if registro['modo_comparacao'] == 'Contém':
-            if registro['conteudo_comparacao'].upper() in razao_social.upper():
-                conta_debito = registro['conta']
-                break # Parar ao encontrar o primeiro match
-        if registro['modo_comparacao'] == 'Igual':
-            if registro['conteudo_comparacao'].upper() == razao_social.upper():
-                conta_debito = registro['conta']
-                break # Parar ao encontrar o primeiro match
-
-
-    # DE/PARA - HISTÓRICO
-    for registro in de_paraHistorico:
-        if registro['modo_comparacao'] == 'Contém':
-            if registro['conteudo_comparacao'].upper() in historico.upper():
-                conta_debito = registro['conta']
-                break  # Parar ao encontrar o primeiro match
-        if registro['modo_comparacao'] == 'Igual':
-            if registro['conteudo_comparacao'].upper() == historico.upper():
-                conta_debito = registro['conta']
-                break  # Parar ao encontrar o primeiro match
+    if (conta_debito == ''):
+        # DE/PARA - HISTÓRICO
+        for registro in de_paraHistorico:
+            if registro['modo_comparacao'] == 'Contém':
+                if registro['conteudo_comparacao'].upper() in historico.upper():
+                    conta_debito = registro['conta']
+                    break  # Parar ao encontrar o primeiro match
+            if registro['modo_comparacao'] == 'Igual':
+                if registro['conteudo_comparacao'].upper() == historico.upper():
+                    conta_debito = registro['conta']
+                    break  # Parar ao encontrar o primeiro match
 
     # IR Taxas e Impostos
     if conta_debito == '':
@@ -98,6 +99,12 @@ def formatar_linha(row):
     # Formata o valor com duas casas decimais e substitui '.' por ','
     saida_formatada = f"{row['SAIDA']:.2f}".replace('.', ',')
 
+    # Descrição Histórico
+    if (conta_debito == "492"):
+        descricao_historico = f"VR PG{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}"
+    else:
+        descricao_historico = f"VR PG{f' {re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
     # Construção da linha do TXT
     linha_txt = (
         f"|6100|"
@@ -105,7 +112,7 @@ def formatar_linha(row):
         f"{conta_debito}|"
         f"{conta_credito}|"
         f"{saida_formatada}|"
-        f"VR PG{f' {re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}|"  # Descrição Histórico
+        f"{descricao_historico}|"
         f"{sinal}|||"
     )
     return linha_txt
@@ -188,11 +195,11 @@ df_recebto = df_filtrado[df_filtrado['ENTRADA'].apply(lambda x: float(x) != 0.0 
 
 
 if (create):
-    df_devolucoes_validas.to_excel('../planilhas_geradas/LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
-    desconto_devolucao.to_excel('../planilhas_geradas/LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
-    df_filtrado.to_excel('../planilhas_geradas/Movimentação_Mercantis_08.xlsx', index=False)
-    df_pagto.to_excel('../planilhas_geradas/Movimentação_Mercantis_PAGTO_08.xlsx', index=False)
-    df_recebto.to_excel('../planilhas_geradas/Movimentação_Mercantis_RECEBTO_08.xlsx', index=False)
+    df_devolucoes_validas.to_excel('./arquivos_gerados/LANCTO.EXCLUIDOS_EM_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+    desconto_devolucao.to_excel('./arquivos_gerados/LINHAS_COM_DESC.POR_DEVOLUÇÃO_08.xlsx', index=False) #Criando tabela com as linhas filtradas
+    df_filtrado.to_excel('./arquivos_gerados/Movimentação_Mercantis_08.xlsx', index=False)
+    df_pagto.to_excel('./arquivos_gerados/Movimentação_Mercantis_PAGTO_08_oRetorno.xlsx', index=False)
+    df_recebto.to_excel('./arquivos_gerados/Movimentação_Mercantis_RECEBTO_08.xlsx', index=False)
 
 
 
