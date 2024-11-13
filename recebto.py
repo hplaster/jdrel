@@ -18,104 +18,65 @@ def limpar_cnpj(cnpj):
 
 
 # Função para aplicar regras de formatação específicas a cada linha do DataFrame
-def formatar_linha(row):
-    ### REGRAS:
-
-    ## CONTA CONTÁBIL A DÉBITO (*)
-    conta_debito = ''
+def formatar_linha_recebto(row):
+    codigo = "|6000|V||||" #Prefixo
     sinal = ''
-    # Carregar JSONs de configuração
-    de_paraHistorico = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-historico_modificado.json')
-    de_paraRazaoSocial = carregar_json('./CONTA_CONTÁBIL_A_DÉBITO/de_para-razaosocial_modificado.json')
-
+    ### REGRAS:
 
     # Certifique-se de que o valor em HISTORICO e RAZAO_SOCIAL não seja None
     historico = str(row['HISTORICO']) if row['HISTORICO'] else ""
     razao_social = str(row['RAZAO_SOCIAL']) if row['RAZAO_SOCIAL'] else ""
-
-    if (conta_debito == ''):
-        # Adiciona 'X' na última coluna se o registro for um cliente
-        try:
-            if int(row['CPF_CNPJ']) > 99999999999 and int(row['NRO_NFE']) >= 1:
-                conta_debito = limpar_cnpj(row['CPF_CNPJ'])
-                sinal = 'X'
-        except (ValueError, TypeError):
-            pass  # Ignora erros caso CPF_CNPJ ou NRO_NFE não sejam numéricos
     
-    if (conta_debito == ''):
-        # DE/PARA - RAZÃO SOCIAL
-        for registro in de_paraRazaoSocial:
-            if registro['modo_comparacao'] == 'Contém':
-                if registro['conteudo_comparacao'].upper() in razao_social.upper():
-                    conta_debito = registro['conta']
-                    break # Parar ao encontrar o primeiro match
-            if registro['modo_comparacao'] == 'Igual':
-                if registro['conteudo_comparacao'].upper() == razao_social.upper():
-                    conta_debito = registro['conta']
-                    break # Parar ao encontrar o primeiro match
-
-    if (conta_debito == ''):
-        # DE/PARA - HISTÓRICO
-        for registro in de_paraHistorico:
-            if registro['modo_comparacao'] == 'Contém':
-                if registro['conteudo_comparacao'].upper() in historico.upper():
-                    conta_debito = registro['conta']
-                    break  # Parar ao encontrar o primeiro match
-            if registro['modo_comparacao'] == 'Igual':
-                if registro['conteudo_comparacao'].upper() == historico.upper():
-                    conta_debito = registro['conta']
-                    break  # Parar ao encontrar o primeiro match
-
-    # Padrão, Valores a classificar.
-    if conta_debito == '':
-        conta_debito = '532'
-
-
-
-    ## CONTA CONTÁBIL A CRÉDITO (*)
-    conta_credito = ''
+    # 1º Registro - Vlr - Entrada (Liquido)(D)
     # Carregar JSONs de configuração
-    de_paraDS_banco = carregar_json('./CONTA_CONTÁBIL_A_CRÉDITO/de_para_bancos-ds_banco_modificado.json')
-    de_paraDS_cc = carregar_json('./CONTA_CONTÁBIL_A_CRÉDITO/de_para_bancos-ds_cc.json')
+    de_paraDS_banco = carregar_json('./recebto_CONTA_CONTÁBIL_A_DÉBITO/de_para_bancos-ds_banco_modificado.json')
+    de_paraDS_cc = carregar_json('./recebto_CONTA_CONTÁBIL_A_DÉBITO/de_para_bancos-ds_cc.json')
+    conta_debito = ''
 
     # DE/PARA - DS_BANCO
     for registro in de_paraDS_banco:
         if registro['modo_comparacao'] == 'Contém':
             if registro['conteudo_comparacao'].upper().replace(' ', '') in str(row['DS_BANCO']).upper().replace(' ', ''):
-                conta_credito = registro['conta']
+                conta_debito = registro['conta']
                 break # Parar ao encontrar o primeiro match
         if registro['modo_comparacao'] == 'Igual':
             if registro['conteudo_comparacao'].upper().replace(' ', '') == str(row['DS_BANCO']).upper().replace(' ', ''):
-                conta_credito = registro['conta']
+                conta_debito = registro['conta']
                 break # Parar ao encontrar o primeiro match
 
     # DE/PARA - DS_CC
     for registro in de_paraDS_cc:
         if registro['conteudo_comparacao'].upper() in str(row['DS_CC']).upper():
-            conta_credito = registro['conta']
+            conta_debito = registro['conta']
             break # Parar ao encontrar o primeiro match
 
 
     # Formata o valor com duas casas decimais e substitui '.' por ','
-    saida_formatada = f"{row['SAIDA']:.2f}".replace('.', ',')
+    entrada_formatada = f"{row['ENTRADA']:.2f}".replace('.', ',')
 
-    # Descrição Histórico
-    if (conta_debito == "492"):
-        descricao_historico = f"VR PG{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}"
-    else:
-        descricao_historico = f"VR PG{f' {re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+    descricao_historico = f"VR.REC.NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
 
     # Construção da linha do TXT
-    linha_txt = (
+    primeira_linha = (
         f"|6100|"
         f"{row['DATMOV']}|"
         f"{conta_debito}|"
-        f"{conta_credito}|"
-        f"{saida_formatada}|"
+        f"|"
+        f"{entrada_formatada}|"
+        f"|"
         f"{descricao_historico}|"
         f"{sinal}|||"
     )
-    return linha_txt
+
+
+
+
+    # Construção da linha do TXT
+    linhas_txt = (
+        f"{codigo}\n"
+        f"{primeira_linha}|"
+    )
+    return linhas_txt
 
 
 
@@ -203,39 +164,6 @@ if (create):
 
 
 
-'''
-# Filtrando valores nulos de pagamento
-df_pagto_nulos = df_filtrado[df_filtrado['SAIDA'].isnull()]
-# Filtrando valores nulos de recebimento
-df_recebto_nulos = df_filtrado[df_filtrado['ENTRADA'].isnull()]
-'''
-
-
-# print(df_pagto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
-# print(df_recebto[['DATMOV', 'SAIDA', 'ENTRADA', 'NRO_NFE', 'HISTORICO']])
-
-# print("DataFrame Filtrado")
-# print(df_filtrado)
-# print('--------------------------------------------------------------------------------------------------')
-# print("DataFrame Desconto por Devolução")
-# print(desconto_devolucao)
-# print('--------------------------------------------------------------------------------------------------')
-# print("DataFrame Devoluções Válidas")
-# print(df_devolucoes_validas[['DATMOV', 'RAZAO_SOCIAL', 'SAIDA', 'ENTRADA', 'CPF_CNPJ']])
-# print('--------------------------------------------------------------------------------------------------')
-# print("DataFrame Excluidos por Devolução")
-# print(df_devolucoes)
-# print('--------------------------------------------------------------------------------------------------')
-# print("DataFrame Pagamentos")
-# print(df_pagto)
-# print('--------------------------------------------------------------------------------------------------')
-# print("DataFrame Recebimentos")
-# print(df_recebto)
-# print('--------------------------------------------------------------------------------------------------')
-
-# Removendo todos os espaços em branco de uma coluna
-#df['Date'] = df['Date'].str.replace('\s+', '|', regex=True)
-
 
 
 
@@ -243,14 +171,13 @@ df_recebto_nulos = df_filtrado[df_filtrado['ENTRADA'].isnull()]
 
 
 # Criar lista de linhas formatadas para o TXT
-linhas_txt = [formatar_linha(row) for _, row in df_pagto.iterrows()]
+linhas_txt = [formatar_linha_recebto(row) for _, row in df_recebto.iterrows()]
 
 # Adicionar cabeçalho de identificação
 cabecalho = "|0000|00085822000112|"
-codigo = "|6000|V||||"
 
 # Juntar todas as linhas em uma estrutura de TXT
-conteudo_txt = "\n".join([cabecalho] + [codigo] + linhas_txt)
+conteudo_txt = "\n".join([cabecalho] + linhas_txt)
 
 # Salvar o conteúdo em um arquivo TXT
 with open('saida_formatada.txt', 'w', encoding='utf-8') as arquivo_txt:
