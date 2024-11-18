@@ -20,7 +20,8 @@ def limpar_cnpj(cnpj):
 # Função para aplicar regras de formatação específicas a cada linha do DataFrame
 def formatar_linha_recebto(row):
     codigo = "|6000|V||||" #Prefixo
-    sinal = ''
+    linhas_txt = [codigo] # Iniciando a lista apenas com o código de sinalização
+
     ### REGRAS:
 
     # Certifique-se de que o valor em HISTORICO e RAZAO_SOCIAL não seja None
@@ -61,13 +62,17 @@ def formatar_linha_recebto(row):
         f"{entrada_formatada}|"
         f"|"
         f"{descricao_historico}|"
-        f"{sinal}|||"
+        f"|||"
     )
+    linhas_txt.append(primeira_linha)
 
 
     # 2º Registro - Vlr - Base (Valor Original)
     de_paraHistorico = carregar_json('./recebto_CONTA_CONTÁBIL_A_CRÉDITO/de_para-historico.json')
     de_paraRazaoSocial = carregar_json('./recebto_CONTA_CONTÁBIL_A_CRÉDITO/de_para-razaosocial.json')
+
+    sinal = ''
+    conta_credito = ''
 
     # Adiciona 'X' na última coluna se o registro for um cliente
     try:
@@ -100,26 +105,62 @@ def formatar_linha_recebto(row):
                 if registro['conteudo_comparacao'].upper() == historico.upper():
                     conta_credito = registro['conta']
                     break  # Parar ao encontrar o primeiro match
-    
+
+    if row['VALOR_BASE'] == 0 or row['VALOR_BASE'] == 0.0:
+        valor_base = row['ENTRADA']
+        valor_base = f"{valor_base:.2f}".replace('.', ',')
+    else:
+        #Valor Base# + #MERC_DEV# + #PERDAS# + #RET_PIS# + #ACERTO# + #RET_COFINS# + #RET_CSLL# + #RET_IR# + #DESC_N#
+        valor_base = row['VALOR_BASE'] + row['DESC_MERC_DEV'] + row['DESC_PERDAS'] + row['DESC_RET_PIS'] + row['DESC_ACERTO'] + row['DESC_RET_COFINS'] + row['DESC_RET_CSLL'] + row['DESC_RET_IR'] + row['DESC_N']
+        valor_base = f"{valor_base:.2f}".replace('.', ',')
+
     # Construção da linha do TXT
     segunda_linha = (
         f"|6100|"
         f"{row['DATMOV']}|"
         f"|"
         f"{conta_credito}|"
-        f"{entrada_formatada}|"
+        f"{valor_base}|"
         f"|"
         f"{descricao_historico}|"
         f"{sinal}|||"
     )
+    linhas_txt.append(segunda_linha)
 
-    # Construção da linha do TXT
-    linhas_txt = (
-        f"{codigo}\n"
-        f"{primeira_linha}\n"
-        f"{segunda_linha}"
-    )
-    return linhas_txt
+
+    # 3º Registro - Vlr - Juros (C)
+    if row['VALOR_JUROS'] != 0 or row['VALOR_JUROS'] != 0.0:
+        pass
+    else:
+        conta_credito = 433
+        descricao_historico = f"VR.REC.JUROS NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
+        if (row['VALOR_JUROS'] + row['VALOR_MULTA']) != 0:
+            valor_juros = row['VALOR_JUROS'] + row['VALOR_MULTA']
+        
+            linhaJuros = (
+                f"|6100|"
+                f"{row['DATMOV']}|"
+                f"|"
+                f"{conta_credito}|"
+                f"{valor_juros}|"
+                f"|"
+                f"{descricao_historico}|"
+                f"|||"
+            )
+
+            linhas_txt.append(linhaJuros)
+
+
+    # # Construção da linha do TXT
+    # linhas_txt = (
+    #     f"{codigo}\n"
+    #     f"{primeira_linha}\n"
+    #     f"{segunda_linha}\n"
+    #     f"{linhaJuros if linhaJuros else ''}"
+    # )
+    # return linhas_txt
+    return "\n".join(linhas_txt)
 
 
 
