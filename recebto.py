@@ -34,6 +34,7 @@ def formatar_linha_recebto(row):
     de_paraDS_banco = carregar_json('./recebto_CONTA_CONTÁBIL_A_DÉBITO/de_para_bancos-ds_banco_modificado.json')
     de_paraDS_cc = carregar_json('./recebto_CONTA_CONTÁBIL_A_DÉBITO/de_para_bancos-ds_cc.json')
     conta_debito = ''
+
     # DE/PARA - DS_BANCO
     for registro in de_paraDS_banco:
         if registro['modo_comparacao'] == 'Contém':
@@ -49,11 +50,12 @@ def formatar_linha_recebto(row):
         if registro['conteudo_comparacao'].upper() in str(row['DS_CC']).upper():
             conta_debito = registro['conta']
             break # Parar ao encontrar o primeiro match
+    
     # Formata o valor com duas casas decimais e substitui '.' por ','
     entrada_formatada = f"{row['ENTRADA']:.2f}".replace('.', ',')
 
     descricao_historico = f"VR.REC.NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
-    # Construção da linha do TXT
+
     primeira_linha = (
         f"|6100|"
         f"{row['DATMOV']}|"
@@ -67,7 +69,7 @@ def formatar_linha_recebto(row):
     linhas_txt.append(primeira_linha)
 
 
-    # 2º Registro - Vlr - Base (Valor Original)
+    # 2º Registro - Vlr - Base (Valor Original)(C)
     de_paraHistorico = carregar_json('./recebto_CONTA_CONTÁBIL_A_CRÉDITO/de_para-historico.json')
     de_paraRazaoSocial = carregar_json('./recebto_CONTA_CONTÁBIL_A_CRÉDITO/de_para-razaosocial.json')
 
@@ -108,19 +110,18 @@ def formatar_linha_recebto(row):
 
     if row['VALOR_BASE'] == 0 or row['VALOR_BASE'] == 0.0:
         valor_base = row['ENTRADA']
-        valor_base = f"{valor_base:.2f}".replace('.', ',')
+        # valor_base = f"{valor_base:.2f}".replace('.', ',')
     else:
         #Valor Base# + #MERC_DEV# + #PERDAS# + #RET_PIS# + #ACERTO# + #RET_COFINS# + #RET_CSLL# + #RET_IR# + #DESC_N#
         valor_base = row['VALOR_BASE'] + row['DESC_MERC_DEV'] + row['DESC_PERDAS'] + row['DESC_RET_PIS'] + row['DESC_ACERTO'] + row['DESC_RET_COFINS'] + row['DESC_RET_CSLL'] + row['DESC_RET_IR'] + row['DESC_N']
-        valor_base = f"{valor_base:.2f}".replace('.', ',')
+        # valor_base = f"{valor_base:.2f}".replace('.', ',')
 
-    # Construção da linha do TXT
     segunda_linha = (
         f"|6100|"
         f"{row['DATMOV']}|"
         f"|"
         f"{conta_credito}|"
-        f"{valor_base}|"
+        f"{f'{valor_base:.2f}'.replace('.', ',')}|"
         f"|"
         f"{descricao_historico}|"
         f"{sinal}|||"
@@ -129,9 +130,7 @@ def formatar_linha_recebto(row):
 
 
     # 3º Registro - Vlr - Juros (C)
-    if row['VALOR_JUROS'] != 0 or row['VALOR_JUROS'] != 0.0:
-        pass
-    else:
+    if row['VALOR_JUROS'] != 0 or row['VALOR_JUROS'] != 0.0: # TRABALHAR ENCIMA DESSA LÓGICA
         conta_credito = 433
         descricao_historico = f"VR.REC.JUROS NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
 
@@ -143,7 +142,7 @@ def formatar_linha_recebto(row):
                 f"{row['DATMOV']}|"
                 f"|"
                 f"{conta_credito}|"
-                f"{valor_juros}|"
+                f"{f'{valor_juros:.2f}'.replace('.', ',')}|"
                 f"|"
                 f"{descricao_historico}|"
                 f"|||"
@@ -152,14 +151,153 @@ def formatar_linha_recebto(row):
             linhas_txt.append(linhaJuros)
 
 
-    # # Construção da linha do TXT
-    # linhas_txt = (
-    #     f"{codigo}\n"
-    #     f"{primeira_linha}\n"
-    #     f"{segunda_linha}\n"
-    #     f"{linhaJuros if linhaJuros else ''}"
-    # )
-    # return linhas_txt
+    # 4º Registro - Desc_N (D)
+    if (row['DESC_N'] != 0 and row['DESC_N'] != 0.0) or row['DESC_N'] > 0.1: # TRABALHAR ENCIMA DESSA LÓGICA
+        conta_debito = 371
+        descricao_historico = f"VR.REC.DESC.NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
+        valor_Desc_N = row['DESC_N']
+    
+        linhaDescN = (
+            f"|6100|"
+            f"{row['DATMOV']}|"
+            f"{conta_debito}|"
+            f"|"
+            f"{f'{valor_Desc_N:.2f}'.replace('.', ',')}|"
+            f"|"
+            f"{descricao_historico}|"
+            f"|||"
+        )
+
+        linhas_txt.append(linhaDescN)
+
+
+    # 5º Registro - DESC_ACERT (D)
+    if row['DESC_ACERTO'] != 0 and row['DESC_ACERTO'] != 0.0: # TRABALHAR ENCIMA DESSA LÓGICA
+        conta_debito = 371
+        descricao_historico = f"VR.REC.DESC.NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
+        valor_Desc_Acerto = row['DESC_ACERTO']
+    
+        linhaDescAcerto = (
+            f"|6100|"
+            f"{row['DATMOV']}|"
+            f"{conta_debito}|"
+            f"|"
+            f"{f'{valor_Desc_Acerto:.2f}'.replace('.', ',')}|"
+            f"|"
+            f"{descricao_historico}|"
+            f"|||"
+        )
+
+        linhas_txt.append(linhaDescAcerto)
+
+
+    # 6º Registro - DESC_PERDAS (D)
+    if row['DESC_PERDAS'] != 0 and row['DESC_PERDAS'] != 0.0: # TRABALHAR ENCIMA DESSA LÓGICA
+        conta_debito = 371
+        descricao_historico = f"VR.REC.DESC NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
+        valor_Desc_Perdas = row['DESC_PERDAS']
+    
+        linhaDescPerdas = (
+            f"|6100|"
+            f"{row['DATMOV']}|"
+            f"{conta_debito}|"
+            f"|"
+            f"{f'{valor_Desc_Perdas:.2f}'.replace('.', ',')}|"
+            f"|"
+            f"{descricao_historico}|"
+            f"|||"
+        )
+
+        linhas_txt.append(linhaDescPerdas)
+
+
+    # 7º Registro - DESC_RET_PIS (D)
+    if row['DESC_RET_PIS'] != 0 and row['DESC_RET_PIS'] != 0.0: # TRABALHAR ENCIMA DESSA LÓGICA
+        conta_debito = 37
+        descricao_historico = f"VR.PROV PIS S/NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
+        valor_Desc_RetPis = row['DESC_RET_PIS']
+
+        linhaDescRetPis = (
+            f"|6100|"
+            f"{row['DATMOV']}|"
+            f"{conta_debito}|"
+            f"|"
+            f"{f'{valor_Desc_RetPis:.2f}'.replace('.', ',')}|"
+            f"|"
+            f"{descricao_historico}|"
+            f"|||"
+        )
+
+        linhas_txt.append(linhaDescRetPis)
+
+
+    # 8º Registro - DESC_RET_COFINS (D)
+    if row['DESC_RET_COFINS'] != 0 and row['DESC_RET_COFINS'] != 0.0: # TRABALHAR ENCIMA DESSA LÓGICA
+        conta_debito = 36
+        descricao_historico = f"VR.PROV COFINS S/NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
+        valor_Desc_RetCofins = row['DESC_RET_COFINS']
+
+        linhaDescRetCofins = (
+            f"|6100|"
+            f"{row['DATMOV']}|"
+            f"{conta_debito}|"
+            f"|"
+            f"{f'{valor_Desc_RetCofins:.2f}'.replace('.', ',')}|"
+            f"|"
+            f"{descricao_historico}|"
+            f"|||"
+        )
+
+        linhas_txt.append(linhaDescRetCofins)
+
+
+    # 9º Registro - DESC_RET_IR (D)
+    if row['DESC_RET_IR'] != 0 and row['DESC_RET_IR'] != 0.0: # TRABALHAR ENCIMA DESSA LÓGICA
+        conta_debito = 31
+        descricao_historico = f"VR.PROV IR S/NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
+        valor_Desc_RetIr = row['DESC_RET_IR']
+
+        linhaDescRetIr = (
+            f"|6100|"
+            f"{row['DATMOV']}|"
+            f"{conta_debito}|"
+            f"|"
+            f"{f'{valor_Desc_RetIr:.2f}'.replace('.', ',')}|"
+            f"|"
+            f"{descricao_historico}|"
+            f"|||"
+        )
+
+        linhas_txt.append(linhaDescRetIr)
+
+
+    # 10º Registro - DESC_RET_CSLL (D)
+    if row['DESC_RET_CSLL'] != 0 and row['DESC_RET_CSLL'] != 0.0: # TRABALHAR ENCIMA DESSA LÓGICA
+        conta_debito = 43
+        descricao_historico = f"VR.PROV CSLL S/NF.{f'{re.sub(r'\s{2,}', ' ', str(row['NRO_NFE'])).strip()}' if str(row['NRO_NFE']).upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(razao_social)).strip()}' if razao_social.upper() != 'NAN' else ''}{f' {re.sub(r'\s{2,}', ' ', str(historico)).strip()}' if historico.upper() != 'NAN' else ''}"
+
+        valor_Desc_RetCSLL = row['DESC_RET_CSLL']
+
+        linhaDescRetCSLL = (
+            f"|6100|"
+            f"{row['DATMOV']}|"
+            f"{conta_debito}|"
+            f"|"
+            f"{f'{valor_Desc_RetCSLL:.2f}'.replace('.', ',')}|"
+            f"|"
+            f"{descricao_historico}|"
+            f"|||"
+        )
+
+        linhas_txt.append(linhaDescRetCSLL)
+
+
     return "\n".join(linhas_txt)
 
 
