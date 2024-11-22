@@ -402,5 +402,5 @@ cabecalho = "|0000|00085822000112|"
 conteudo_txt = "\n".join([cabecalho] + linhas_txt)
 
 # Salvar o conteúdo em um arquivo TXT
-with open('saida_formatada.txt', 'w', encoding='utf-8') as arquivo_txt:
+with open('saida_formatada_RECEBTO.txt', 'w', encoding='utf-8') as arquivo_txt:
     arquivo_txt.write(conteudo_txt)

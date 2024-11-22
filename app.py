@@ -253,5 +253,5 @@ codigo = "|6000|V||||"
 conteudo_txt = "\n".join([cabecalho] + [codigo] + linhas_txt)
 
 # Salvar o conteúdo em um arquivo TXT
-with open('saida_formatada.txt', 'w', encoding='utf-8') as arquivo_txt:
+with open('saida_formatada_PAGTO.txt', 'w', encoding='utf-8') as arquivo_txt:
     arquivo_txt.write(conteudo_txt)
